@@ -12,20 +12,19 @@
 #  CRSS parameters based on observed and theoretical Schmid factors       #
 ###########################################################################
 
-import os,re,sys
+import os,re,sys,string
 import math                                                                                         # noqa
 import numpy as np
 from scipy import interpolate
 from scipy import stats
 from optparse import OptionParser
-import damask
+import utility
 import scipy
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit,minimize
 
-
-scriptName = os.path.splitext(os.path.basename(__file__))[0]
-scriptID   = ' '.join([scriptName,damask.version])
+scriptID   = string.replace('$Id: CRSSextractor.py chakra34 $','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 #---------------------------------- functions ---------------------------------------------------- #
 
@@ -37,8 +36,8 @@ def DprobabilityDensity(steps, cumProb,axis=1,range=None):
   if len(cumProb) == 1: return cumProb
   else:
     if range is None: range = [min(cumProb[:,axis]),max(cumProb[:,axis])]
-    if steps > len(cumProb): steps = len(cumProb) - 1 
-    
+    if steps > len(cumProb): steps = len(cumProb) - 1
+
     probDensity = []
     index = np.searchsorted(cumProb[:,axis],np.linspace(min(range),max(range),steps+1,endpoint=True))     # array indices where to evaluate
     index = np.maximum(np.zeros_like(index),np.minimum( (len(cumProb)-1) * np.ones_like(index),index))
@@ -195,13 +194,13 @@ def DataToSchmid(data):
     for i in xrange(len(members)):
       SF_list.append(sorted_SF[count:count+members[i]])
       count += members[i]
-  
+
   return SF_list
 
 
 def cdf(SF_list,observations = None):                                                     # distribution function
   """
-  takes the input data comprising of list of arrays with SF and weights and outputs 
+  takes the input data comprising of list of arrays with SF and weights and outputs
   a list of arrays with SF, weights and cummulative probabilities
   for observation the weights are scaled based on frequency of observations
   e.g. for a family having total 10 and observed 3, the weights are 8,9,10
@@ -210,7 +209,7 @@ def cdf(SF_list,observations = None):                                           
   number = 0
 #   if observations:
 #     for i in xrange(len(SF_list)):
-#       for j in xrange(len(SF_list[i])):        
+#       for j in xrange(len(SF_list[i])):
 #         SF_list[i][j,1] = observations[i] - len(SF_list[i]) + 1
   for i in xrange(len(SF_list)):
     SF_list[i] = SF_list[i][SF_list[i][:,0].argsort()][::-1]
@@ -245,14 +244,14 @@ def activation_ratio(population_SF,observation_SF,plot=False):            # acti
     density_observation.append(DprobabilityDensity(delta,cumProb_obs,axis=1,range=None,))
     density_observation[i][:,0] = np.exp(density_observation[i][:,0])
     density_population.append(DprobabilityDensity(delta,cumProb_pop,axis=1,range=None,))
-    density_population[i][:,0] = np.exp(density_population[i][:,0])  
+    density_population[i][:,0] = np.exp(density_population[i][:,0])
     x.append(density_observation[i][:,0])
 
     interpolation_population_density = interpolate.UnivariateSpline(density_population[i][:,0],
                                                                     density_population[i][:,1],
-                                                                    k=1,ext='extrapolate') 
+                                                                    k=1,ext='extrapolate')
     interpolatedDensity_population.append(interpolation_population_density(x[-1]))
-      
+
     activationRatio.append(np.vstack((x[-1],
                                      (density_observation[i][:,1]/interpolatedDensity_population[i]))).T)
     if plot == True:
@@ -274,7 +273,7 @@ def NewActivation_Ratio(population_SF,observation_SF,plot=False):            # a
   """
   New method
   """
-  
+
   activationRatio           = []
   legend = ['basal','prism','pyr<a>','pyr<c+a>']
   color  = ['b'    ,'r'    ,'g'     ,'y',      ]
@@ -308,7 +307,7 @@ def function(x,m,c):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=utility.extendableOption, usage='%prog options [file[s]]', description = """
 CRSS extractor
 """, version = scriptID)
 
@@ -383,7 +382,7 @@ out_dir = os.path.dirname(os.path.realpath(options.obs_file))                   
 if options.obs_file:
 #------------------- Reading the simulated tip from file -----------------
 
-  table_obs = damask.ASCIItable(name = options.obs_file, buffered = False,readonly=True)
+  table_obs = utility.ASCIItable(name = options.obs_file, buffered = False,readonly=True)
   table_obs.head_read()
   table_obs.data_readArray()
   table_obs.data = np.vstack((table_obs.data[:,table_obs.label_index(options.labels)],
@@ -396,11 +395,11 @@ if filenames == []: filenames = [None]
 
 for name in filenames:
   try:
-    table = damask.ASCIItable(name = name,
+    table = utility.ASCIItable(name = name,
                               readonly = True,
                               buffered = False)
   except: continue
-  damask.util.report(scriptName,name)
+  utility.util.report(scriptName,name)
 
 # ------------------------------------------ read header ------------------------------------------
 
@@ -415,7 +414,7 @@ for name in filenames:
 
   SF_population = DataToSchmid(table.data)
   observations  = [len(i) for i in SF_population]
-  theoretical_SF_distribution = cdf(SF_population,observations)  
+  theoretical_SF_distribution = cdf(SF_population,observations)
   observed_SF_distribution = cdf(SF_observation,observations)
   print [len(j) for j in SF_observation]
   inter = []
@@ -429,7 +428,7 @@ for name in filenames:
         observed_SF.write('SF cumProb\n')
         for j in xrange(len(observed_SF_distribution[i])):
             observed_SF.write('{} {}\n'.format(observed_SF_distribution[i][j,0],
-                                               observed_SF_distribution[i][j,2]))      
+                                               observed_SF_distribution[i][j,2]))
     for i in xrange(len(theoretical_SF_distribution)):
       with open('{}/SF_theoreticalDistribution_sys{}.txt'.format(out_dir,i+1),'w') as observed_SF:
         observed_SF.write('1 head\n')
@@ -454,7 +453,7 @@ for name in filenames:
     for i in xrange(len(activationRatio)):
       if len(activationRatio[i][~np.isnan(activationRatio[i][:,1])]) > 1:
         plt.loglog(activationRatio[i][:,0],activationRatio[i][:,1],c=color[i],linewidth=1.2,marker='o',label=legend[i])
-    
+
     plt.title('Activation ratio vs SF')
     plt.xlim(0.1,0.5)
     plt.ylim(1e-3,1e1)
@@ -466,14 +465,14 @@ for name in filenames:
 
 
 #----------------------------------------------------------------------------------------------------- #
-  
+
   ratio = []
   valid_ratio = np.nan
   if options.slope:
     slopes = []
     valid_slope = np.nan
     for i in xrange(len(activationRatio)):
-      valid_activationRatio = activationRatio[i][~np.isnan(activationRatio[i][:,1])]  
+      valid_activationRatio = activationRatio[i][~np.isnan(activationRatio[i][:,1])]
       if len(valid_activationRatio) > 0:
         x = np.log(valid_activationRatio[:,0])
         y = np.log(valid_activationRatio[:,1])
@@ -494,7 +493,7 @@ for name in filenames:
 #         plt.yscale('log')
 #         plt.show()
         slopes.append(slope)
-      else: 
+      else:
         slopes.append(np.nan)
         with open('{}/Slope_ActivationRatioDistribution_sys{}.txt'.format(out_dir,i+1),'w') as activity_slope:
           activity_slope.write('1 head\n')
@@ -514,7 +513,7 @@ for name in filenames:
     spread = max_SF - min_SF
     print min_SF,max_SF
     for i in xrange(len(activationRatio)):
-      valid_activationRatio = activationRatio[i][~np.isnan(activationRatio[i][:,1])]  
+      valid_activationRatio = activationRatio[i][~np.isnan(activationRatio[i][:,1])]
       if len(valid_activationRatio) > 0:
         if spread <= 0.1:
           slopes.append(1/np.average(valid_activationRatio[:,1]))
@@ -530,7 +529,7 @@ for name in filenames:
     slopes = []
     valid_slope = np.nan
     for i in xrange(len(activationRatio)):
-      valid_activationRatio = activationRatio[i][~np.isnan(activationRatio[i][:,0])]  
+      valid_activationRatio = activationRatio[i][~np.isnan(activationRatio[i][:,0])]
       if len(valid_activationRatio) > 0:
         slopes.append(np.average(activationRatio[i][:,0]))
         valid_slope = slopes[-1]
@@ -548,7 +547,7 @@ for name in filenames:
           ratio.append(activationRatio[i][index,1][0])
         else:
           if len(np.where(activationRatio[i][:,0] < SF)[0]) >= 1 and len(np.where(activationRatio[i][:,0] > SF)[0]) >= 1:
-            index_left  = np.where(activationRatio[i][:,0] < SF)[0][-1]          
+            index_left  = np.where(activationRatio[i][:,0] < SF)[0][-1]
             index_right = np.where(activationRatio[i][:,0] > SF)[0][0]
             local_slope = (activationRatio[i][index_right,1] - activationRatio[i][index_left,1])/(activationRatio[i][index_right,0] - activationRatio[i][index_left,0])
             slope = activationRatio[i][index_left,1] + local_slope * (SF - activationRatio[i][index_left,0])
@@ -556,7 +555,7 @@ for name in filenames:
           ratio.append(slope)
         diff = ratio[-1]
         valid_ratio = diff
-      else: 
+      else:
         diff = np.nan
         ratio.append(diff)                                                         # appending for last point
     if np.isnan(ratio[0]) == True or ratio[0] <= 0.0: ratio = 1/(ratio/valid_ratio)
@@ -573,5 +572,5 @@ for name in filenames:
         left[i] = ratio[i]
         crss.write("{} {} {} {} {} {}\n".format(i+1,ratio[i],left[0],left[1],left[2],left[3]))
 
-  damask.util.croak("ratio {}".format(ratio))
+  utility.util.croak("ratio {}".format(ratio))
   table.close()
