@@ -1,0 +1,27 @@
+This outlines the means to generate CRSS data:
+P.S. The flow is correct however depending on your machine the path may be adjusted for the files
+on which the scripts will be running. Should be pretty straightforward
+
+### running the PX CP-FFT simulations:
+
+./run.random.iCER.HOME.sh
+
+
+### postprocessing
+
+./run.sh
+
+### generating plots like the paper:
+
+./scripts/postProcessing_for_plots/data.sh
+./scripts/postProcessing_for_plots/RMS.sh         # for accuracy
+./scripts/postProcessing_for_plots/StdDev.sh         # for precision
+
+### Plotting:
+./scripts/postProcessing_for_plots/New_CRSS_plot.sh  ## this will generate the plots 
+
+###Finally to generate the distribution plots:
+
+./scripts/postProcessing_for_plots/Results_all_MeanStd_RMS.sh
+./scripts/postProcessing_for_plots/AccuracyPrecision_plots.sh
+
